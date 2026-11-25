@@ -69,20 +69,35 @@ docker-compose.yaml                  # Airflow + banco analítico
 
 ## Como rodar
 
+### Requisitos
+
+- Docker com Docker Compose **v2.14 ou mais novo** (no Windows, Docker Desktop com WSL2)
+- Pelo menos **4 GB de memória** disponíveis para o Docker
+- Portas **8080** (Airflow) e **5433** (banco analítico) livres
+
+**Ambiente em que o projeto foi testado:** Windows com WSL2 (Ubuntu) · Docker 29.3.1 · Docker Compose v5.1.0 · Apache Airflow 3.1.8 · PostgreSQL 16
+
+### Passo a passo
+
 ```bash
-# 1. Configurar o usuário e as pastas
+# 1. Baixar o projeto
+git clone https://github.com/SEU_USUARIO/shopbrasil-airflow.git
+cd shopbrasil-airflow
+
+# 2. Configurar o usuário e criar as pastas que não vão para o repositório
 echo "AIRFLOW_UID=$(id -u)" > .env
 mkdir -p logs plugins config
 
-# 2. Subir o ambiente
-docker compose up airflow-init
+# 3. Inicializar e subir o ambiente
+docker compose up airflow-init     # aguarde "exited with code 0"
 docker compose up -d
+docker compose ps                  # aguarde todos ficarem "healthy" (1 a 2 min)
 
-# 3. Criar o pool (limita a 2 os cálculos simultâneos)
+# 4. Criar o pool (limita a 2 os cálculos simultâneos)
 docker compose exec airflow-scheduler airflow pools set ecommerce_pool 2 "Limita a concorrencia das tasks mapeadas"
 ```
 
-Acesse <http://localhost:8080> (usuário `airflow`, senha `airflow`), ative a DAG `shopbrasil_precos_por_categoria` e clique em **Trigger**.
+Acesse <http://localhost:8080> (usuário `airflow`, senha `airflow`), ative a DAG `shopbrasil_precos_por_categoria` e clique em **Trigger → Single Run**.
 
 ### Consultar os resultados
 
