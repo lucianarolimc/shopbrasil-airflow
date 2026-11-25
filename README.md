@@ -105,10 +105,22 @@ docker compose exec postgres-dw psql -U dw_user -d shopbrasil \
 
 ![Histórico](docs/img/historico_append.png)
 
-**Resiliência:** com a API inacessível, a task tenta 6 vezes com esperas crescentes e, ao desistir, dispara o alerta.
+**Resiliência:** com a URL da API trocada por um endereço inválido, a task tenta 6 vezes com esperas crescentes e, ao desistir, dispara o alerta.
 
-![Retry](docs/img/retry.png)
-![Alerta](docs/img/alerta.png)
+Durante as tentativas, o `on_retry_callback` registra cada nova tentativa:
+
+```text
+[2026-11-25T21:37:31Z] WARNING - [RETRY] dag=shopbrasil_precos_por_categoria task=ingestao.buscar_produtos tentativa=2 falhou e será executada novamente. Erro: HTTPSConnectionPool(host='fakestoreapi.invalido', port=443): Max retries exceeded with url: /products (Caused by NameResolutionError(... Failed to resolve 'fakestoreapi.invalido' ...))
+```
+
+Na 6ª tentativa, a task desiste e o `on_failure_callback` dispara o alerta simulado:
+
+```text
+[2026-11-25T21:41:24Z] ERROR - [ALERTA SIMULADO] Enviando para o canal #dados-alertas:
+Pipeline ShopBrasil FALHOU!
+dag=shopbrasil_precos_por_categoria task=ingestao.buscar_produtos tentativa=6
+Erro: HTTPSConnectionPool(host='fakestoreapi.invalido', port=443): Max retries exceeded with url: /products (Caused by NameResolutionError(... Failed to resolve 'fakestoreapi.invalido' ...))
+```
 
 ## Observações
 
