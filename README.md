@@ -81,7 +81,7 @@ docker-compose.yaml                  # Airflow + banco analítico
 
 ```bash
 # 1. Baixar o projeto
-git clone https://github.com/SEU_USUARIO/shopbrasil-airflow.git
+git clone https://github.com/lucianarolimc/shopbrasil-airflow.git
 cd shopbrasil-airflow
 
 # 2. Configurar o usuário e criar as pastas que não vão para o repositório
@@ -97,14 +97,28 @@ docker compose ps                  # aguarde todos ficarem "healthy" (1 a 2 min)
 docker compose exec airflow-scheduler airflow pools set ecommerce_pool 2 "Limita a concorrencia das tasks mapeadas"
 ```
 
-Acesse <http://localhost:8080> (usuário `airflow`, senha `airflow`), ative a DAG `shopbrasil_precos_por_categoria` e clique em **Trigger → Single Run**.
+### Depois de acessar o Airflow
 
-### Consultar os resultados
+1. Acesse <http://localhost:8080> e entre com usuário `airflow` e senha `airflow`.
+2. No menu da esquerda, clique em **Dags**. A DAG `shopbrasil_precos_por_categoria` aparece na lista, **pausada** (toda DAG nova começa assim).
+3. **Ative a DAG** pelo botão de liga/desliga ao lado do nome. Se o horário das 06:00 de hoje já passou, o Airflow executa essa rodada automaticamente.
+4. Para rodar quando quiser, clique em **Trigger** (▷) → **Single Run** → **Trigger**.
+5. Clique no nome da DAG e abra a aba **Graph** para acompanhar a execução. Em poucos segundos, todas as tasks devem ficar verdes, com uma instância de `calcular_metricas` para cada categoria.
+6. Confira o resultado no banco analítico:
 
 ```bash
+# Snapshot do dia (o que o painel lê): 1 linha por categoria
 docker compose exec postgres-dw psql -U dw_user -d shopbrasil \
   -c "SELECT * FROM metricas_categoria ORDER BY categoria;"
+
+# Histórico: as linhas de cada execução, acumuladas
+docker compose exec postgres-dw psql -U dw_user -d shopbrasil \
+  -c "SELECT run_id, categoria, preco_medio, coletado_em FROM metricas_categoria_historico ORDER BY coletado_em, categoria;"
 ```
+
+**Para testar a idempotência:** na execução concluída, clique na task `persistencia.salvar_snapshot` → **Clear** e confirme. Depois de ela rodar de novo, consulte o snapshot outra vez: o número de linhas continua o mesmo e só o `atualizado_em` muda.
+
+> Os horários na interface aparecem no fuso do navegador. Para ver no horário de Brasília, troque o fuso nas configurações do usuário (canto inferior esquerdo).
 
 ## Testes
 
